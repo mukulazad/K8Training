@@ -1,0 +1,239 @@
+What are the differences file-wise? 
+Ans: Api version is V1, selector-Match label, difference in Kind & Conatainer Port 
+
+[root@ip-172-31-6-142 04-controllers]# diff -y kubia-replicaset.yaml kubia-rc.ya                                                                             ml
+apiVersion: apps/v1beta2                                      | apiVersion: v1
+kind: ReplicaSet                                              | kind: Replicatio                                                                             nController
+metadata:                                                       metadata:
+  name: kubia                                                 |   name: kubia2
+spec:                                                           spec:
+  replicas: 3                                                     replicas: 3
+  selector:                                                       selector:
+    matchLabels:                                              |     app: kubia
+      app: kubia                                              <
+  template:                                                       template:
+    metadata:                                                       metadata:
+      labels:                                                         labels:
+        app: kubia                                                      app: kub                                                                             ia
+    spec:                                                           spec:
+      containers:                                                     containers                                                                             :
+      - name: kubia                                                   - name: ku                                                                             bia
+        image: luksa/kubia                                              image: l                                                                             uksa/kubia
+                                                              >         ports:
+                                                              >         - contai                                                                             nerPort: 8080
+
+
+Run the kubia-replicaset.yaml .
+Identify what commands can be run after "kubectl apply...."
+Ans: kubectl apply -f kubia-replicaset.yaml
+
+NAME    DESIRED   CURRENT   READY   AGE
+kubia   3         3         3       80s
+[root@ip-172-31-6-142 04-controllers]# kubectl get rc
+NAME     DESIRED   CURRENT   READY   AGE
+kubia2   3         3         3       7m5s
+[root@ip-172-31-6-142 04-controllers]#
+
+
+Make a service over these pods (kubia-replicaset) and see if the service picks up the web-service within the pod ("You have hit....." message)
+[root@ip-172-31-6-142 05-services]# curl 192.168.80.137:8080
+You've hit kubia-2v5hp
+[root@ip-172-31-6-142 05-services]# kubectl apply -f kubia-svc.yaml
+service/kubia2 created
+[root@ip-172-31-6-142 05-services]# kubectl get svc
+NAME         TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)   AGE
+kubernetes   ClusterIP   10.96.0.1     <none>        443/TCP   8d
+kubia2       ClusterIP   10.99.10.99   <none>        80/TCP    8s
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia2-qs4cs
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia2-qs4cs
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia-2v5hp
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia2-rmnxg
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia-2v5hp
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia-zj8sn
+[root@ip-172-31-6-142 05-services]#
+
+
+Negative Testing : change the labels of the pod and see if the service is still applied on those pods
+Not working
+
+[root@ip-172-31-6-142 05-services]# kubectl describe po -n default       kubia-2v5hp
+Name:         kubia-2v5hp
+Namespace:    default
+Priority:     0
+Node:         ip-172-31-12-255.ap-southeast-1.compute.internal/172.31.12.255
+Start Time:   Sat, 12 Nov 2022 15:22:31 +0000
+Labels:       app=kubia
+Annotations:  <none>
+Status:       Running
+IP:           192.168.80.137
+IPs:
+  IP:           192.168.80.137
+Controlled By:  ReplicaSet/kubia
+Containers:
+  kubia:
+    Container ID:   docker://b31325f064faf4e4086d3b26161f854754f711a4e6b04da687308bb865ba4f13
+    Image:          luksa/kubia
+    Image ID:       docker-pullable://luksa/kubia@sha256:3f28e304dc0f63dc30f273a4202096f0fa0d08510bd2ee7e1032ce600616de24
+    Port:           <none>
+    Host Port:      <none>
+    State:          Running
+      Started:      Sat, 12 Nov 2022 15:22:41 +0000
+    Ready:          True
+    Restart Count:  0
+    Environment:    <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-m8hdl (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             True
+  ContainersReady   True
+  PodScheduled      True
+Volumes:
+  default-token-m8hdl:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-m8hdl
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute for 300s
+                 node.kubernetes.io/unreachable:NoExecute for 300s
+Events:
+  Type    Reason     Age   From                                                       Message
+  ----    ------     ----  ----                                                       -------
+  Normal  Scheduled  26m   default-scheduler                                          Successfully assigned default/kubia-2v5hp to ip-172-31-12-255.ap-southeast-1.compute.internal
+  Normal  Pulling    26m   kubelet, ip-172-31-12-255.ap-southeast-1.compute.internal  Pulling image "luksa/kubia"
+  Normal  Pulled     26m   kubelet, ip-172-31-12-255.ap-southeast-1.compute.internal  Successfully pulled image "luksa/kubia"
+  Normal  Created    26m   kubelet, ip-172-31-12-255.ap-southeast-1.compute.internal  Created container kubia
+  Normal  Started    26m   kubelet, ip-172-31-12-255.ap-southeast-1.compute.internal  Started container kubia
+[root@ip-172-31-6-142 05-services]# kubectl get pod -A
+NAMESPACE     NAME                                                                      READY   STATUS    RESTARTS   AGE
+default       kubia-2v5hp                                                               1/1     Running   0          28m
+default       kubia-6vw5q                                                               1/1     Running   0          28m
+default       kubia-zj8sn                                                               1/1     Running   0          28m
+default       kubia2-qs4cs                                                              1/1     Running   0          33m
+default       kubia2-rmnxg                                                              1/1     Running   0          33m
+default       kubia2-rn4cw                                                              1/1     Running   0          33m
+default       nginx-kalyan                                                              1/1     Running   0          5d6h
+kube-system   calico-etcd-vct26                                                         1/1     Running   0          8d
+kube-system   calico-kube-controllers-7997dc8d7b-zn2gn                                  1/1     Running   1          8d
+kube-system   calico-node-65sk9                                                         2/2     Running   2          8d
+kube-system   calico-node-7vwc5                                                         2/2     Running   2          8d
+kube-system   coredns-66bff467f8-5qd6l                                                  1/1     Running   0          8d
+kube-system   coredns-66bff467f8-dtmbd                                                  1/1     Running   0          8d
+kube-system   etcd-ip-172-31-6-142.ap-southeast-1.compute.internal                      1/1     Running   0          8d
+kube-system   kube-apiserver-ip-172-31-6-142.ap-southeast-1.compute.internal            1/1     Running   0          8d
+kube-system   kube-controller-manager-ip-172-31-6-142.ap-southeast-1.compute.internal   1/1     Running   0          8d
+kube-system   kube-proxy-78fkj                                                          1/1     Running   0          8d
+kube-system   kube-proxy-bk55k                                                          1/1     Running   0          8d
+kube-system   kube-scheduler-ip-172-31-6-142.ap-southeast-1.compute.internal            1/1     Running   0          8d
+[root@ip-172-31-6-142 05-services]# kubectl label pods kubia-2v5hp app=kubia2 --overwrite
+pod/kubia-2v5hp labeled
+[root@ip-172-31-6-142 05-services]# kubectl describe po -n default       kubia-2v5hp
+Name:         kubia-2v5hp
+Namespace:    default
+Priority:     0
+Node:         ip-172-31-12-255.ap-southeast-1.compute.internal/172.31.12.255
+Start Time:   Sat, 12 Nov 2022 15:22:31 +0000
+Labels:       app=kubia2
+Annotations:  <none>
+Status:       Running
+IP:           192.168.80.137
+IPs:
+  IP:  192.168.80.137
+Containers:
+  kubia:
+    Container ID:   docker://b31325f064faf4e4086d3b26161f854754f711a4e6b04da687308bb865ba4f13
+    Image:          luksa/kubia
+    Image ID:       docker-pullable://luksa/kubia@sha256:3f28e304dc0f63dc30f273a4202096f0fa0d08510bd2ee7e1032ce600616de24
+    Port:           <none>
+    Host Port:      <none>
+    State:          Running
+      Started:      Sat, 12 Nov 2022 15:22:41 +0000
+    Ready:          True
+    Restart Count:  0
+    Environment:    <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-m8hdl (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             True
+  ContainersReady   True
+  PodScheduled      True
+Volumes:
+  default-token-m8hdl:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-m8hdl
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute for 300s
+                 node.kubernetes.io/unreachable:NoExecute for 300s
+Events:
+  Type    Reason     Age   From                                                       Message
+  ----    ------     ----  ----                                                       -------
+  Normal  Scheduled  29m   default-scheduler                                          Successfully assigned default/kubia-2v5hp to ip-172-31-12-255.ap-southeast-1.compute.internal
+  Normal  Pulling    29m   kubelet, ip-172-31-12-255.ap-southeast-1.compute.internal  Pulling image "luksa/kubia"
+  Normal  Pulled     29m   kubelet, ip-172-31-12-255.ap-southeast-1.compute.internal  Successfully pulled image "luksa/kubia"
+  Normal  Created    29m   kubelet, ip-172-31-12-255.ap-southeast-1.compute.internal  Created container kubia
+  Normal  Started    29m   kubelet, ip-172-31-12-255.ap-southeast-1.compute.internal  Started container kubia
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia-zj8sn
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia-6vw5q
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia-wplxk
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia2-qs4cs
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia-6vw5q
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia-wplxk
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia2-rn4cw
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia2-qs4cs
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia2-rmnxg
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia2-rn4cw
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia-wplxk
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia2-qs4cs
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia-zj8sn
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia2-rmnxg
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia2-rmnxg
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia2-qs4cs
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia2-qs4cs
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia2-rmnxg
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia-6vw5q
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia-6vw5q
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia2-rmnxg
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia-6vw5q
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia-wplxk
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia2-rmnxg
+[root@ip-172-31-6-142 05-services]# curl 10.99.10.99:80
+You've hit kubia2-qs4cs
+
+
+
