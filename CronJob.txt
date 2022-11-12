@@ -1,0 +1,57 @@
+[root@ip-172-31-6-142 05-services]# cd ../04-controllers/
+[root@ip-172-31-6-142 04-controllers]# ls -lrth
+total 44K
+-rw-r--r-- 1 root root 239 Nov 12 14:45 batch-job.yaml
+drwxr-xr-x 2 root root  24 Nov 12 14:45 batch-job
+-rw-r--r-- 1 root root 197 Nov 12 14:45 kubia-liveness-probe.yaml
+-rw-r--r-- 1 root root 227 Nov 12 14:45 kubia-liveness-probe-initial-delay.yaml
+-rw-r--r-- 1 root root 371 Nov 12 14:45 cronjob.yaml
+-rw-r--r-- 1 root root 290 Nov 12 14:45 multi-completion-parallel-batch-job.yaml
+-rw-r--r-- 1 root root 273 Nov 12 14:45 multi-completion-batch-job.yaml
+drwxr-xr-x 2 root root  38 Nov 12 14:45 kubia-unhealthy
+-rw-r--r-- 1 root root 325 Nov 12 14:45 kubia-replicaset-matchexpressions.yaml
+-rw-r--r-- 1 root root 294 Nov 12 14:45 kubia-rc.yaml
+-rw-r--r-- 1 root root 280 Nov 12 14:45 time-limited-batch-job.yaml
+-rw-r--r-- 1 root root 313 Nov 12 14:45 ssd-monitor-daemonset.yaml
+drwxr-xr-x 2 root root  24 Nov 12 14:45 ssd-monitor
+-rw-r--r-- 1 root root 261 Nov 12 15:22 kubia-replicaset.yaml
+[root@ip-172-31-6-142 04-controllers]# cat cronjob.yaml
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: batch-job-every-fifteen-minutes
+spec:
+  schedule: "0,15,30,45 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: periodic-batch-job
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: main
+            image: luksa/batch-job
+[root@ip-172-31-6-142 04-controllers]# kubectl apply -f cronjob.yaml
+cronjob.batch/batch-job-every-fifteen-minutes created
+[root@ip-172-31-6-142 04-controllers]# kubectl get cronjob
+NAME                              SCHEDULE             SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+batch-job-every-fifteen-minutes   0,15,30,45 * * * *   False     0        <none>          19s
+[root@ip-172-31-6-142 04-controllers]# kubectl get jobs --watch
+NAME                                         COMPLETIONS   DURATION   AGE
+batch-job-every-fifteen-minutes-1668268800   0/1                      0s
+batch-job-every-fifteen-minutes-1668268800   0/1           0s         0s
+^C[root@ip-172-31-6-142 04-controllers]# kubectl get jobs
+NAME                                         COMPLETIONS   DURATION   AGE
+batch-job-every-fifteen-minutes-1668268800   0/1           97s        97s
+[root@ip-172-31-6-142 04-controllers]# kubectl get cronjob batch-job-every-fifteen-minutes
+NAME                              SCHEDULE             SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+batch-job-every-fifteen-minutes   0,15,30,45 * * * *   False     1        113s            2m38s
+[root@ip-172-31-6-142 04-controllers]#
+
+
+
+
+What is the change from normal Jobs (jobs v/s cronJobs)?
+Ans: Both Jobs & CronJobs does the same thing except CronJob, It runs a job periodically on a given schedule.
